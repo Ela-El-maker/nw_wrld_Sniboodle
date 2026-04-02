@@ -7,6 +7,32 @@
 class Corners extends ModuleBase {
   static methods = [
     {
+      name: "cornerVisibility",
+      executeOnLoad: true,
+      options: [
+        {
+          name: "topLeft",
+          defaultVal: true,
+          type: "boolean",
+        },
+        {
+          name: "topRight",
+          defaultVal: true,
+          type: "boolean",
+        },
+        {
+          name: "bottomLeft",
+          defaultVal: true,
+          type: "boolean",
+        },
+        {
+          name: "bottomRight",
+          defaultVal: true,
+          type: "boolean",
+        },
+      ],
+    },
+    {
       name: "color",
       executeOnLoad: true,
       options: [
@@ -39,8 +65,14 @@ class Corners extends ModuleBase {
     this.name = Corners.name;
     this.canvas = null;
     this.ctx = null;
-    this.color = "#ffffff";
-    this.size = 20;
+    this.cornerColor = "#ffffff";
+    this.cornerSize = 20;
+    this.cornerVisibilityOptions = {
+      topLeft: true,
+      topRight: true,
+      bottomLeft: true,
+      bottomRight: true,
+    };
     this.init();
   }
 
@@ -59,47 +91,75 @@ class Corners extends ModuleBase {
     const ctx = this.ctx;
     const width = this.canvas.width;
     const height = this.canvas.height;
-    const size = this.size;
-    const color = this.color;
+    const size = this.cornerSize;
+    const color = this.cornerColor;
     const paddingX = width * 0.05;
     const paddingY = height * 0.05;
+    const { topLeft, topRight, bottomLeft, bottomRight } = this.cornerVisibilityOptions;
 
     ctx.clearRect(0, 0, width, height);
     ctx.strokeStyle = color;
     ctx.lineWidth = 2;
 
-    ctx.beginPath();
-    ctx.moveTo(paddingX, paddingY + size);
-    ctx.lineTo(paddingX, paddingY);
-    ctx.lineTo(paddingX + size, paddingY);
-    ctx.stroke();
+    if (topLeft) {
+      ctx.beginPath();
+      ctx.moveTo(paddingX, paddingY + size);
+      ctx.lineTo(paddingX, paddingY);
+      ctx.lineTo(paddingX + size, paddingY);
+      ctx.stroke();
+    }
 
-    ctx.beginPath();
-    ctx.moveTo(width - paddingX - size, paddingY);
-    ctx.lineTo(width - paddingX, paddingY);
-    ctx.lineTo(width - paddingX, paddingY + size);
-    ctx.stroke();
+    if (topRight) {
+      ctx.beginPath();
+      ctx.moveTo(width - paddingX - size, paddingY);
+      ctx.lineTo(width - paddingX, paddingY);
+      ctx.lineTo(width - paddingX, paddingY + size);
+      ctx.stroke();
+    }
 
-    ctx.beginPath();
-    ctx.moveTo(paddingX, height - paddingY - size);
-    ctx.lineTo(paddingX, height - paddingY);
-    ctx.lineTo(paddingX + size, height - paddingY);
-    ctx.stroke();
+    if (bottomLeft) {
+      ctx.beginPath();
+      ctx.moveTo(paddingX, height - paddingY - size);
+      ctx.lineTo(paddingX, height - paddingY);
+      ctx.lineTo(paddingX + size, height - paddingY);
+      ctx.stroke();
+    }
 
-    ctx.beginPath();
-    ctx.moveTo(width - paddingX - size, height - paddingY);
-    ctx.lineTo(width - paddingX, height - paddingY);
-    ctx.lineTo(width - paddingX, height - paddingY - size);
-    ctx.stroke();
+    if (bottomRight) {
+      ctx.beginPath();
+      ctx.moveTo(width - paddingX - size, height - paddingY);
+      ctx.lineTo(width - paddingX, height - paddingY);
+      ctx.lineTo(width - paddingX, height - paddingY - size);
+      ctx.stroke();
+    }
+  }
+
+  cornerVisibility({
+    topLeft = this.cornerVisibilityOptions.topLeft,
+    topRight = this.cornerVisibilityOptions.topRight,
+    bottomLeft = this.cornerVisibilityOptions.bottomLeft,
+    bottomRight = this.cornerVisibilityOptions.bottomRight,
+  } = {}) {
+    this.cornerVisibilityOptions = {
+      topLeft,
+      topRight,
+      bottomLeft,
+      bottomRight,
+    };
+    this.drawCarets();
+  }
+
+  setCornerVisibility(options = {}) {
+    return this.cornerVisibility(options);
   }
 
   color({ color = "#ffffff" } = {}) {
-    this.color = color;
+    this.cornerColor = color;
     this.drawCarets();
   }
 
   size({ size = 20 } = {}) {
-    this.size = size;
+    this.cornerSize = size;
     this.drawCarets();
   }
 
