@@ -54,6 +54,8 @@ const Projector = {
   pendingWorkspaceReload: false,
   previewModuleName: null,
   previewToken: 0,
+  deferredClearPreviewToken: null,
+  isPreviewLoading: false,
   debugOverlayActive: false,
   debugLogQueue: [],
   debugLogTimeout: null,

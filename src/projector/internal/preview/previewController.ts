@@ -4,6 +4,8 @@ import { getMessaging } from "../bridge";
 
 type PreviewControllerContext = {
   previewToken: number;
+  deferredClearPreviewToken: number | null;
+  isPreviewLoading: boolean;
   previewModuleName: unknown;
   restoreTrackNameAfterPreview: unknown;
 
@@ -40,6 +42,9 @@ export async function previewModule(
   };
 
   const token = ++this.previewToken;
+  if (this.deferredClearPreviewToken === token - 1) {
+    this.deferredClearPreviewToken = null;
+  }
   const debugEnabled = logger.debugEnabled;
   if (debugEnabled) {
     logger.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
@@ -70,12 +75,8 @@ export async function previewModule(
     return;
   }
 
-  if (token !== this.previewToken) {
-    sendPreviewCancelled();
-    return;
-  }
-
   const moduleNameStr = String(moduleName);
+  this.isPreviewLoading = true;
   try {
     if (debugEnabled) {
       logger.log(`🎨 [PREVIEW] Setting preview module name: ${moduleNameStr}`);
@@ -199,10 +200,22 @@ export async function previewModule(
         error: (error as { message?: unknown } | null)?.message || "PREVIEW_FAILED",
       });
     }
+  } finally {
+    if (this.previewToken === token) {
+      this.isPreviewLoading = false;
+    }
+    if (this.deferredClearPreviewToken === token && this.previewModuleName === moduleName) {
+      this.deferredClearPreviewToken = null;
+      this.clearPreviewForModule(moduleName, { restoreTrack: true });
+    }
   }
 }
 
 export function clearPreview(this: PreviewControllerContext) {
+  if (this.isPreviewLoading) {
+    this.deferredClearPreviewToken = this.previewToken;
+    return;
+  }
   this.previewToken++;
   const debugEnabled = logger.debugEnabled;
   if (debugEnabled) logger.log(`🧹 [PREVIEW] clearPreview called`);
@@ -248,6 +261,9 @@ export function clearPreviewForModule(
   }
   if (this.previewModuleName === moduleName) {
     this.previewModuleName = null;
+  }
+  if (this.deferredClearPreviewToken === this.previewToken) {
+    this.deferredClearPreviewToken = null;
   }
   if (debugEnabled) logger.log(`✅✅✅ [PREVIEW] Preview cleared successfully`);
 

@@ -81,6 +81,8 @@ export const AddModuleModal = ({
   const [loadingPreviewModuleId, setLoadingPreviewModuleId] = useState<string | null>(null);
   const [rewritingModuleId, setRewritingModuleId] = useState<string | null>(null);
   const [rewriteError, setRewriteError] = useState<string | null>(null);
+  const hoveredPreviewModuleIdRef = useRef<string | null>(null);
+  const loadingPreviewModuleIdRef = useRef<string | null>(null);
   const previewRequestRef = useRef<{ moduleId: string | null; requestId: string | null }>({
     moduleId: null,
     requestId: null,
@@ -89,10 +91,13 @@ export const AddModuleModal = ({
   const lastAutoPreviewSentRef = useRef<string | null>(null);
   const previewClearTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingClearAfterLoadRef = useRef(false);
+  const wasOpenRef = useRef(false);
 
   const clearPreviewNow = useCallback(() => {
     setHoveredPreviewModuleId(null);
     setLoadingPreviewModuleId(null);
+    hoveredPreviewModuleIdRef.current = null;
+    loadingPreviewModuleIdRef.current = null;
     previewRequestRef.current = {
       moduleId: null,
       requestId: null,
@@ -110,6 +115,13 @@ export const AddModuleModal = ({
     }
     previewClearTimeoutRef.current = setTimeout(() => {
       previewClearTimeoutRef.current = null;
+      if (
+        hoveredPreviewModuleIdRef.current &&
+        hoveredPreviewModuleIdRef.current === loadingPreviewModuleIdRef.current
+      ) {
+        pendingClearAfterLoadRef.current = true;
+        return;
+      }
       clearPreviewNow();
     }, 120);
   }, [clearPreviewNow]);
@@ -122,6 +134,7 @@ export const AddModuleModal = ({
   }, []);
 
   const handleClose = () => {
+    wasOpenRef.current = false;
     cancelScheduledPreviewClear();
     pendingClearAfterLoadRef.current = false;
     setRewritingModuleId(null);
@@ -129,6 +142,14 @@ export const AddModuleModal = ({
     clearPreviewNow();
     onClose();
   };
+
+  useEffect(() => {
+    hoveredPreviewModuleIdRef.current = hoveredPreviewModuleId;
+  }, [hoveredPreviewModuleId]);
+
+  useEffect(() => {
+    loadingPreviewModuleIdRef.current = loadingPreviewModuleId;
+  }, [loadingPreviewModuleId]);
 
   const modalTitle = (
     <>
@@ -179,7 +200,9 @@ export const AddModuleModal = ({
 
   const handleAddToTrack = (module: PredefinedModule) => {
     if (!track || effectiveTrackIndex === null || effectiveTrackIndex === -1) return;
-    sendToProjector("clear-preview", {});
+    wasOpenRef.current = false;
+    cancelScheduledPreviewClear();
+    clearPreviewNow();
     updateActiveSet(setUserData, activeSetId, (activeSet) => {
       const tracksUnknown = (activeSet as Record<string, unknown>).tracks;
       if (!Array.isArray(tracksUnknown)) return;
@@ -320,6 +343,7 @@ export const AddModuleModal = ({
       if (previewRequestRef.current.requestId !== requestId) return;
 
       setLoadingPreviewModuleId(null);
+      loadingPreviewModuleIdRef.current = null;
       previewRequestRef.current = {
         moduleId: previewRequestRef.current.moduleId,
         requestId: null,
@@ -345,9 +369,10 @@ export const AddModuleModal = ({
       const moduleId = payload.moduleId || null;
       if (!moduleId) return;
       if (payload.ok) return;
-      if (loadingPreviewModuleId !== moduleId) return;
+      if (loadingPreviewModuleIdRef.current !== moduleId) return;
 
       setLoadingPreviewModuleId(null);
+      loadingPreviewModuleIdRef.current = null;
       previewRequestRef.current = { moduleId: String(moduleId), requestId: null };
       previewDispatchedRequestIdRef.current = null;
       if (pendingClearAfterLoadRef.current) {
@@ -355,15 +380,19 @@ export const AddModuleModal = ({
         clearPreviewNow();
       }
     },
-    [loadingPreviewModuleId, clearPreviewNow]
+    [clearPreviewNow]
   );
 
   useEffect(() => {
     if (!isOpen) {
-      cancelScheduledPreviewClear();
-      clearPreviewNow();
+      if (wasOpenRef.current) {
+        cancelScheduledPreviewClear();
+        clearPreviewNow();
+      }
+      wasOpenRef.current = false;
       return;
     }
+    wasOpenRef.current = true;
     if (!hoveredPreviewModuleId) return;
     if (lastAutoPreviewSentRef.current === hoveredPreviewModuleId) return;
     if (
@@ -466,6 +495,8 @@ export const AddModuleModal = ({
                     const requestId = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
                     setHoveredPreviewModuleId(hoveredId);
                     setLoadingPreviewModuleId(hoveredId);
+                    hoveredPreviewModuleIdRef.current = hoveredId;
+                    loadingPreviewModuleIdRef.current = hoveredId;
                     previewRequestRef.current = {
                       moduleId: hoveredId,
                       requestId,
@@ -533,8 +564,13 @@ export const AddModuleModal = ({
                   };
 
                   const handleClearPreview = () => {
-                    if (isHovered && isLoading) {
+                    const moduleId = module.id || module.name;
+                    if (
+                      hoveredPreviewModuleIdRef.current === moduleId &&
+                      loadingPreviewModuleIdRef.current === moduleId
+                    ) {
                       pendingClearAfterLoadRef.current = true;
+                      return;
                     }
                     schedulePreviewClear();
                   };

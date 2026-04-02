@@ -93,6 +93,7 @@ module.exports = (env, argv) => {
     watchOptions: {
       ignored: /src\/shared\/json\/userData\.json$/,
     },
+    performance: false,
     target: "web",
   };
 };
